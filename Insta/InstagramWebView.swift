@@ -52,7 +52,7 @@ struct InstagramWebView: UIViewRepresentable {
         private var rules: Rules          // only touched on the main thread
         private var lastFetch = Date.distantPast
         private var pendingTask: URLSessionDataTask?
-        private weak var currentWebView: WKWebView?
+        fileprivate weak var currentWebView: WKWebView?
 
         override init() {
             let initial: Rules
