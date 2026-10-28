@@ -6,14 +6,22 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # Pinned: macos-latest moved to macOS 26 in 2026. macos-15 stays available
+    # and is not in the macOS 14 retirement window.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate Xcode project
+      - name: Install XcodeGen 2.46.0
         run: |
-          brew install xcodegen
-          xcodegen generate
+          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          rm -rf /tmp/xcodegen
+          unzip -q /tmp/xcodegen.zip -d /tmp/xcodegen
+          sudo /tmp/xcodegen/xcodegen/install.sh /usr/local
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate
 
       - name: Build (unsigned)
         run: |

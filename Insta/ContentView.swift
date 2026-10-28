@@ -2,15 +2,32 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var showSettings = false
+    @State private var loadFailed = false
+    @State private var reloadToken = 0
 
     var body: some View {
         ZStack {
-            InstagramWebView()
+            InstagramWebView(loadFailed: $loadFailed, reloadToken: reloadToken)
                 .ignoresSafeArea()
+                .id("instagram-webview")
+
+            if loadFailed {
+                VStack(spacing: 12) {
+                    Text("Couldn't load Instagram")
+                        .font(.headline)
+                    Button("Retry") {
+                        loadFailed = false
+                        reloadToken += 1
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityLabel("Retry loading Instagram")
+                }
+                .padding(24)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            }
 
             VStack {
                 HStack {
-                    Spacer()
                     Button(action: { showSettings = true }) {
                         Image(systemName: "gearshape.fill")
                             .foregroundColor(.white)
@@ -18,7 +35,9 @@ struct ContentView: View {
                             .background(Color.black.opacity(0.5))
                             .clipShape(Circle())
                     }
+                    .accessibilityLabel("Settings")
                     .padding()
+                    Spacer()
                 }
                 Spacer()
             }
@@ -45,6 +64,9 @@ struct SettingsView: View {
                         .onSubmit {
                             NotificationCenter.default.post(name: InstagramWebView.Coordinator.rulesDidChangeNotification, object: nil)
                         }
+                    Text("Must be an https URL.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 Section(header: Text("Screen Time (Optional)")) {
