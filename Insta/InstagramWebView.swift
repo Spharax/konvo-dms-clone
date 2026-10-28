@@ -118,8 +118,8 @@ struct InstagramWebView: UIViewRepresentable {
                     if (typeof s !== 'string') return false;
                     const t = s.trim();
                     if (!t || t.length > 180) return false;
-                    if (/[{}@\\<>]|\\/\\*|\\*\\//.test(t)) return false;
-                    if (/^(?:\\*|html|body)$/i.test(t)) return false;
+                    if (/[{}@\\<>]|\/\*|\*\//.test(t)) return false;
+                    if (/^(?:\*|html|body)$/i.test(t)) return false;
                     return true;
                 }
 
@@ -129,7 +129,7 @@ struct InstagramWebView: UIViewRepresentable {
                     return sels
                         .filter(isSafeSelector)
                         .map(s => s + ' { display: none !important; visibility: hidden !important; }')
-                        .join('\\n');
+                        .join('\n');
                 }
 
                 let styleEl = null;
