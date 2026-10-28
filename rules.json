@@ -4,10 +4,8 @@
     "a[href='/']",
     "a[href='/explore/']",
     "a[href='/reels/']",
-    "a[href*='/explore']",
-    "a[href*='/reels']",
-    "[aria-label*='Home']",
-    "[aria-label*='Explore']",
-    "[aria-label*='Reels']"
+    "a:has(svg[aria-label='Home'])",
+    "a:has(svg[aria-label='Explore'])",
+    "a:has(svg[aria-label='Reels'])"
   ]
 }

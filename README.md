@@ -1,95 +1,55 @@
-# Konvo Clone – Instagram DMs Only
+# Insta – Instagram DMs Only
 
-Personal-use iOS app that clones the core behavior of **Konvo: DMs Only**.
+Personal-use iOS app that loads `https://www.instagram.com` in a `WKWebView`, hides the Home / Explore / Reels entry points, and bounces those routes back to `/direct/inbox/`. Reels, posts, and stories opened from DMs still work.
 
-It loads `https://www.instagram.com` inside a `WKWebView`, injects CSS/JS to hide the Feed / Explore / Reels surfaces, and forces navigation back to `/direct/inbox/` whenever a blocked route is hit. Individual reels, posts, and stories opened from DMs remain functional.
+**Personal use only. This violates Instagram's Terms of Service and uses Instagram's glyph for the icon. Do not distribute.**
 
-**Personal use only. This violates Instagram’s Terms of Service. Do not distribute.**
+## Setup
 
-## Architecture
+1. New Xcode project: iOS App, SwiftUI, **minimum deployment target iOS 16.0**.
+2. Delete the generated `ContentView.swift` / app file and add everything in `Insta/` to the target.
+3. Replace the project's `Assets.xcassets` with the one in `Insta/` (it contains the blue `AppIcon`), or drag just the `AppIcon.appiconset` into yours.
+4. **App name:** Target → General → *Display Name* = `Insta`
+   (or build setting `INFOPLIST_KEY_CFBundleDisplayName = Insta`, or `CFBundleDisplayName` in Info.plist).
+5. Target → Signing & Capabilities → set `Insta.entitlements` as the entitlements file only if you need Screen Time (otherwise leave it unset).
+6. Host `rules.json` (GitHub raw etc.) and set the URL in the in-app Settings (gear icon). Push the updated `rules.json` in this folder to your repo.
 
-- Pure SwiftUI + `WKWebView` (`UIViewRepresentable`)
-- Script injected at `atDocumentStart`
-- Hides elements by `href` path (language-independent) + optional aria-label fallbacks
-- Navigation policy + JS history hooks redirect `/`, `/explore/`, `/reels/` → `/direct/inbox/`
-- Allows `/reel/{id}/`, `/p/{id}/`, `/stories/...`, and all `/direct/` routes
-- Opens directly to inbox on launch
-- Remote rules JSON (fetched on each page load, last successful copy cached in `UserDefaults`)
-- Optional Screen Time stub (FamilyControls / ManagedSettings) – off by default
+## Review fixes (2026-10-28)
 
-## Project Structure
+- **Infinite mutation loop (CPU/battery):** `applyHide()` rewrote `style.textContent` on every DOM mutation, which itself triggered the observer again. CSS is now only written when it changes, and the observer only watches for the `<style>` tag being removed.
+- Hide rules are now emitted as CSS, one rule per selector, so remote `hideSelectors` also apply to elements added later and one bad selector can't break the rest. (Before, the persistent CSS was hardcoded and ignored the remote list.)
+- `autocorrectionDisabled()` and `AuthorizationCenter.requestAuthorization(for:)` are iOS 16 APIs, but the README said iOS 15 → compile errors. Minimum is now iOS 16.
+- Back navigation: added `allowsBackForwardNavigationGestures` (swipe back after opening a reel/post/story).
+- Data race: remote rules were assigned from a background `URLSession` thread while the navigation delegate read them on main. Now applied on the main thread.
+- Navigation policy only judges main-frame navigations (an iframe pointing at `/` could previously redirect the whole app).
+- Remote fetch now checks for HTTP 200, throttles to once per 60 s, and tolerates missing keys in the JSON.
+- JS redirect and history hooks now install immediately at document start instead of waiting for `DOMContentLoaded`.
+- `rules.json`: removed the wildcard `[aria-label*='Home'|'Explore'|'Reels']` and `a[href*='/explore'|'/reels']` selectors, which could hide unrelated elements and links inside DM threads.
+- Screen Time toggle was a no-op; it's now disabled and labelled as not implemented.
+- Removed unused `rulesHandler` message handler and unused `import WebKit` in the app file.
 
-```
-KonvoClone/
-├── KonvoClone/
-│   ├── KonvoCloneApp.swift
-│   ├── ContentView.swift
-│   ├── InstagramWebView.swift
-│   ├── ScreenTimeManager.swift
-│   └── KonvoClone.entitlements
-└── rules.json
-```
+## Additional fixes (post-review)
 
-## Building
+- Settings changes to the rules URL now post a notification that forces an immediate refetch (bypassing the 60 s throttle) and applies the new rules without requiring a manual navigation.
+- Remote rules are passed to JS as a JSON string and `JSON.parse`d, avoiding fragile object-literal interpolation.
+- Fetch failures (network, non-200, decode) now log in DEBUG builds.
+- In-flight `URLSession` tasks are cancelled on deinit and on a new fetch.
+- MutationObserver also watches `subtree` for more reliable style re-attachment.
+- History hook guards against non-function originals.
+- ScreenTimeManager marked as unused stub.
 
-1. Create a new Xcode project (iOS App, SwiftUI, minimum iOS 15+).
-2. Replace the generated files with the ones in this folder (or copy the sources into your project).
-3. Add the four `.swift` files to your target.
-4. Set the deployment target to iOS 15.0 or later.
-5. In **Info.plist** (or target settings) add:
-   - `NSAppTransportSecurity` if needed (usually not, Instagram is HTTPS).
-   - For Screen Time: `com.apple.developer.family-controls` entitlement (requires Apple approval even for personal devices; leave disabled unless you request it).
-6. Build & run on a device or simulator.
+## Known behavior to test on a device
 
-**User-Agent** is set to a recent iPhone Safari string so Instagram serves the mobile web experience.
+- Instagram's mobile-web **Search** tab goes through `/explore/`, which is blocked, so Search will likely bounce to the inbox. Allow-list `/explore/search/` in `blockedPaths` logic if you need it.
+- The gear button sits over the top-right corner of Instagram's header.
+- Instagram changes its DOM often; update `rules.json` rather than rebuilding.
 
-## Remote Rules
+## Getting an .ipa (no Mac needed)
 
-Host the included `rules.json` somewhere reachable (GitHub raw, your own server, etc.).
+1. Push this whole folder to a GitHub repo (keep `project.yml`, `Insta/`, and `.github/`).
+2. GitHub → Actions → **Build IPA** → Run workflow (it also runs on every push to `main`).
+3. When it finishes, download the `Insta-ipa` artifact and unzip it to get `Insta.ipa`.
+4. The IPA is **unsigned**. Install it with Sideloadly or AltStore, which sign it with your Apple ID.
+   (Free Apple IDs: the app expires after 7 days and must be re-signed.)
 
-Default URL in the app points to this repo:
-`https://raw.githubusercontent.com/Spharax/konvo-dms-clone/main/rules.json`
-
-In the app, open the gear icon → Settings and paste any other raw URL if you want.
-
-On every page finish the app fetches the JSON, caches it, and re-injects the updated `blockedPaths` / `hideSelectors` into the page via `window.__applyKonvoRules`.
-
-If the fetch fails, the last cached copy is used.
-
-Instagram changes its DOM frequently. Update the JSON when the bottom nav or icons change; no App Store rebuild required.
-
-## Testing Checklist
-
-- [ ] App opens straight to `/direct/inbox/`
-- [ ] Bottom navigation has no Home / Explore / Reels entry points (or they are hidden)
-- [ ] Tapping a reel shared inside a DM opens and plays the reel
-- [ ] Story replies open the story viewer
-- [ ] Search and Profile remain usable
-- [ ] Message requests and group chats work
-- [ ] Password is never stored by the app (login happens entirely on Instagram’s page)
-
-## Optional Screen Time
-
-`ScreenTimeManager.swift` contains the skeleton for FamilyControls + ManagedSettings + DeviceActivity.
-
-It is disabled by default. Enabling it requires:
-
-- The Family Controls entitlement
-- User authorization via `AuthorizationCenter`
-- A `FamilyActivityPicker` so the user selects the Instagram app
-- Logic for the two daily passes (5 min + 1 min)
-
-This matches Konvo’s optional shield feature. Leave it off unless you specifically need it.
-
-## Notes
-
-- Cookies and session stay inside the `WKWebsiteDataStore`. The app never sees the password.
-- For best results, test on a physical device; Instagram’s mobile web can behave differently in the simulator.
-- If Instagram starts blocking the remote JSON via CSP, fall back to the cached rules or ship an updated injection script.
-
-**Fixed bugs (2026-10-28 review):**
-
-- Injection script was added to the configuration *after* the `WKWebView` was created, so it never ran. Now added before creation.
-- Cached rules are now baked into the initial injected script so the first paint already respects the last successful rules.
-- `target="_blank"` / `window.open` links (common for shared media) now load in the same web view instead of being dropped.
-- Blocking logic is slightly more precise so individual `/reel/{id}/` paths are never treated as the Reels tab.
+Or with a Mac: open the project in Xcode → Product → Archive → Distribute App → Custom → Development/Ad Hoc.
