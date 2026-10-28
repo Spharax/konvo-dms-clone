@@ -2,17 +2,18 @@
 
 Personal-use iOS app that loads `https://www.instagram.com` in a `WKWebView`, hides the Home / Explore / Reels entry points, and bounces those routes back to `/direct/inbox/`. Reels, posts, and stories opened from DMs still work.
 
-**Personal use only. This violates Instagram's Terms of Service and uses Instagram's glyph for the icon. Do not distribute.**
+**Personal use only. This violates Instagram's Terms of Service. Do not distribute.**
 
 ## Setup
 
 1. New Xcode project: iOS App, SwiftUI, **minimum deployment target iOS 16.0**.
 2. Delete the generated `ContentView.swift` / app file and add everything in `Insta/` to the target.
-3. Replace the project's `Assets.xcassets` with the one in `Insta/` (it contains the blue `AppIcon`), or drag just the `AppIcon.appiconset` into yours.
-4. **App name:** Target → General → *Display Name* = `Insta`
+3. **App name:** Target → General → *Display Name* = `Insta`
    (or build setting `INFOPLIST_KEY_CFBundleDisplayName = Insta`, or `CFBundleDisplayName` in Info.plist).
-5. Target → Signing & Capabilities → set `Insta.entitlements` as the entitlements file only if you need Screen Time (otherwise leave it unset).
-6. Host `rules.json` (GitHub raw etc.) and set the URL in the in-app Settings (gear icon). Push the updated `rules.json` in this folder to your repo.
+4. Target → Signing & Capabilities → set `Insta.entitlements` as the entitlements file only if you need Screen Time (otherwise leave it unset).
+5. Host `rules.json` (GitHub raw etc.) and set the URL in the in-app Settings (gear icon). Push the updated `rules.json` in this folder to your repo.
+
+App icon is not included. Add an `AppIcon` asset catalog and set `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` if you want one.
 
 ## Review fixes (2026-10-28)
 
@@ -37,6 +38,8 @@ Personal-use iOS app that loads `https://www.instagram.com` in a `WKWebView`, hi
 - MutationObserver also watches `subtree` for more reliable style re-attachment.
 - History hook guards against non-function originals.
 - ScreenTimeManager marked as unused stub.
+- Removed leftover old `KonvoClone/` sources.
+- Dropped `ASSETCATALOG_COMPILER_APPICON_NAME` (no asset catalog in the repo).
 
 ## Known behavior to test on a device
 
