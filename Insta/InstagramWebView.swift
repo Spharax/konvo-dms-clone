@@ -361,7 +361,10 @@ struct InstagramWebView: UIViewRepresentable {
             request.timeoutInterval = 10
 
             pendingTask?.cancel()
-            let task = URLSession.shared.dataTask(with: request) { [weak self, weak webView] data, response, error in
+            // Declared first: the completion captures it, and `let task = dataTask { ... task ... }`
+            // is a use-before-declaration error in Swift.
+            var task: URLSessionDataTask?
+            task = URLSession.shared.dataTask(with: request) { [weak self, weak webView] data, response, error in
                 let status = (response as? HTTPURLResponse)?.statusCode ?? -1
                 let decoded: Rules? = {
                     guard let data = data, error == nil, status == 200 else { return nil }
@@ -370,7 +373,7 @@ struct InstagramWebView: UIViewRepresentable {
 
                 DispatchQueue.main.async {
                     guard let self = self else { return }
-                    if self.pendingTask === task { self.pendingTask = nil }
+                    if let task, self.pendingTask === task { self.pendingTask = nil }
 
                     guard let rules = decoded,
                           let json = (try? JSONEncoder().encode(rules)).flatMap({ String(data: $0, encoding: .utf8) })
@@ -398,7 +401,7 @@ struct InstagramWebView: UIViewRepresentable {
                 }
             }
             pendingTask = task
-            task.resume()
+            task?.resume()
         }
     }
 }
